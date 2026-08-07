@@ -514,7 +514,7 @@ async function movePlayer(steps) {
 
   if (noahsMap.has(position)) {
     const target = noahsMap.get(position);
-    await showGobble(position, target);
+    await showGobble();
     position = target;
     placeToken(position);
     updatePositionDisplay();
@@ -530,7 +530,7 @@ function updatePositionDisplay() {
 }
 
 let noahImageIndex = 0;
-async function showGobble(fromSquare, toSquare) {
+async function showGobble() {
   const src = NOAH_IMAGES[noahImageIndex % NOAH_IMAGES.length];
   noahImageIndex++;
 

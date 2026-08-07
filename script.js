@@ -1,16 +1,14 @@
 // ---- Board configuration -------------------------------------------------
-const BOARD_SIZE = 100;
+const BOARD_SIZE = 40;
 
 // [start, end] — landing on `start` sends you climbing up to `end`.
 const LADDERS = [
-  [22, 29], [26, 37], [36, 75], [40, 64],
-  [59, 87], [66, 77], [70, 97], [78, 99],
+  [13, 25], [14, 30], [18, 23], [19, 28],
 ];
 
 // [start, end] — landing on `start` gets you gobbled by Noah, dropping you to `end`.
 const NOAHS = [
-  [17, 4], [43, 21], [46, 14], [51, 25],
-  [54, 41], [63, 30], [95, 79],
+  [20, 12], [21, 9], [22, 7], [24, 8],
 ];
 
 const laddersMap = new Map(LADDERS);
@@ -63,15 +61,15 @@ const PIP_LAYOUTS = {
 // onto the board's percentage/viewBox — the board container is a fixed 1:1
 // square, so no pixel measuring or resize recalculation is needed.
 const SVG_NS = "http://www.w3.org/2000/svg";
-const COLS = 10;
-const ROWS = 10;
+const COLS = 8;
+const ROWS = 5;
 const X_MIN = 9;
 const X_MAX = 91;
 const Y_BOTTOM = 91;
 const Y_TOP = 9;
 const COL_GAP = (X_MAX - X_MIN) / (COLS - 1);
 const ROW_GAP = (Y_BOTTOM - Y_TOP) / (ROWS - 1);
-const WAVE_AMPLITUDE = 3.4;
+const WAVE_AMPLITUDE = 5;
 
 function computeSquarePositions() {
   const positions = new Map();
@@ -92,6 +90,31 @@ function computeSquarePositions() {
 
 const squarePositions = computeSquarePositions();
 
+// Cycles through the available Noah photos for the on-board badges; falls
+// back to an emoji per-badge if a given image file isn't there yet.
+let noahBadgeIndex = 0;
+function makeNoahBadge() {
+  const badge = document.createElement("img");
+  badge.className = "noah-badge";
+  badge.alt = "Noah";
+  badge.src = NOAH_IMAGES[noahBadgeIndex % NOAH_IMAGES.length];
+  noahBadgeIndex++;
+  badge.onerror = () => {
+    badge.remove();
+    fallback.hidden = false;
+  };
+  const fallback = document.createElement("span");
+  fallback.className = "noah-badge-fallback";
+  fallback.textContent = "😋";
+  fallback.hidden = true;
+
+  const wrap = document.createElement("span");
+  wrap.className = "noah-badge-wrap";
+  wrap.appendChild(badge);
+  wrap.appendChild(fallback);
+  return wrap;
+}
+
 function startPosition() {
   const first = squarePositions.get(1);
   return { x: Math.max(3, first.x - 6), y: first.y };
@@ -107,13 +130,16 @@ function buildBoard() {
     node.style.left = `${x}%`;
     node.style.top = `${y}%`;
 
-    if (square === 100) {
+    if (square === BOARD_SIZE) {
       node.classList.add("win-cell");
     } else {
       node.classList.add(square % 2 === 0 ? "shade-a" : "shade-b");
     }
     if (laddersMap.has(square)) node.classList.add("ladder-start");
-    if (noahsMap.has(square)) node.classList.add("noah-start");
+    if (noahsMap.has(square)) {
+      node.classList.add("noah-start");
+      node.appendChild(makeNoahBadge());
+    }
     for (const [, end] of LADDERS) {
       if (end === square) node.classList.add("ladder-end");
     }
@@ -181,7 +207,7 @@ function drawLadder(svg, start, end) {
   const len = Math.hypot(dx, dy) || 1;
   const px = -dy / len; // perpendicular unit vector
   const py = dx / len;
-  const railOffset = 1.6;
+  const railOffset = 2;
 
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("class", "ladder-graphic");
@@ -320,7 +346,7 @@ async function movePlayer(steps) {
   updatePositionDisplay();
 
   if (position === BOARD_SIZE) {
-    setMessage("You reached square 100!");
+    setMessage(`You reached square ${BOARD_SIZE}!`);
     await sleep(300);
     showWin();
     return;

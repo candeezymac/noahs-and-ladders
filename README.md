@@ -9,22 +9,24 @@ or deploy it as a static site.
 
 ## How to play
 
-- Roll the dice and your token moves that many squares on a 10x100 board.
+- Roll the dice and your token moves that many squares along a winding
+  40-square path.
 - Land on a 🪜 ladder square and climb straight up.
 - Land on a 😋 Noah square and get gobbled — you'll drop back down to a
   lower square.
-- You need the *exact* roll to land on square 100 to win (rolling too
-  high just wastes that turn).
+- You need the *exact* roll to land on the final square to win (rolling
+  too high just wastes that turn).
 - Because the dice are random and every square is reachable, you're
-  **guaranteed to reach 100 eventually** — some games are just longer
+  **guaranteed to reach the end eventually** — some games are just longer
   than others depending on the rolls!
 
 ## Adding Noah's photos
 
 Drop real photos of Noah into [`assets/images/noah/`](assets/images/noah)
 named `noah1.jpg`, `noah2.jpg`, `noah3.jpg` and they'll automatically show
-up in the "gobbled" animation. See the README in that folder for details.
-The game works fine with the default 😋 emoji if you skip this step.
+up on the board's Noah squares and in the "gobbled" animation. See the
+README in that folder for details. The game works fine with the default
+😋 emoji if you skip this step.
 
 ## Running locally
 

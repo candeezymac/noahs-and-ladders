@@ -79,14 +79,14 @@ body {
 
 .node {
   position: absolute;
-  width: 8%;
-  height: 8%;
+  width: 9%;
+  height: 9%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(9px, 1.6vw, 12px);
+  font-size: clamp(11px, 2vw, 15px);
   color: rgba(255,255,255,0.75);
   border: 2px solid rgba(255,255,255,0.08);
   box-shadow: 0 2px 4px rgba(0,0,0,0.35);
@@ -97,8 +97,8 @@ body {
 .node.shade-b { background: var(--board-b); }
 
 .node.win-cell {
-  width: 10.5%;
-  height: 10.5%;
+  width: 11.5%;
+  height: 11.5%;
   background: linear-gradient(135deg, #ffd166, #f4a11e);
   color: #3a2470;
   font-weight: bold;
@@ -114,29 +114,48 @@ body {
 .node.ladder-end::after {
   content: "🪜";
   position: absolute;
-  top: -7px;
-  right: -7px;
-  font-size: clamp(10px, 2vw, 14px);
-  z-index: 3;
-}
-
-.node.noah-start::after {
-  content: "😋";
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  font-size: clamp(10px, 2vw, 14px);
+  top: -9px;
+  right: -9px;
+  font-size: clamp(13px, 2.4vw, 17px);
   z-index: 3;
 }
 
 .node.noah-end::after {
   content: "🙈";
   position: absolute;
-  top: -7px;
-  right: -7px;
-  font-size: clamp(9px, 1.8vw, 12px);
+  top: -9px;
+  right: -9px;
+  font-size: clamp(11px, 2.2vw, 15px);
   z-index: 3;
   opacity: 0.85;
+}
+
+.noah-badge-wrap {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  z-index: 3;
+}
+
+.noah-badge {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid var(--noah);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  display: block;
+}
+
+.noah-badge-fallback {
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.noah-badge-fallback[hidden] {
+  display: none;
 }
 
 .connector-svg {
@@ -183,8 +202,8 @@ body {
 
 .token {
   position: absolute;
-  width: 6%;
-  height: 6%;
+  width: 7%;
+  height: 7%;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, #fff, var(--accent) 60%);
   border: 2px solid #6b4a12;

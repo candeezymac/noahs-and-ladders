@@ -1,0 +1,54 @@
+# Noahs and Ladders 🪜😋
+
+A silly single-player twist on Snakes and Ladders — made for Noah. Instead
+of snakes, watch out for **Noah** himself: land on his square and he
+gobbles you up, sending you back down the board!
+
+Pure HTML/CSS/JS, no build step, no dependencies. Just open `index.html`
+or deploy it as a static site.
+
+## How to play
+
+- Roll the dice and your token moves that many squares on a 10x100 board.
+- Land on a 🪜 ladder square and climb straight up.
+- Land on a 😋 Noah square and get gobbled — you'll drop back down to a
+  lower square.
+- You need the *exact* roll to land on square 100 to win (rolling too
+  high just wastes that turn).
+- Because the dice are random and every square is reachable, you're
+  **guaranteed to reach 100 eventually** — some games are just longer
+  than others depending on the rolls!
+
+## Adding Noah's photos
+
+Drop real photos of Noah into [`assets/images/noah/`](assets/images/noah)
+named `noah1.jpg`, `noah2.jpg`, `noah3.jpg` and they'll automatically show
+up in the "gobbled" animation. See the README in that folder for details.
+The game works fine with the default 😋 emoji if you skip this step.
+
+## Running locally
+
+Just open `index.html` in a browser — or, for the smoothest experience
+(avoids any local file-security quirks), serve it:
+
+```bash
+python3 -m http.server 8000
+# then visit http://localhost:8000
+```
+
+## Deploying with GitHub Pages (free)
+
+1. Push this repo to GitHub (already done if you're reading this on GitHub).
+2. In the repo, go to **Settings → Pages**.
+3. Under "Build and deployment", set **Source** to `Deploy from a branch`.
+4. Pick the branch you want live (e.g. `main`) and folder `/ (root)`.
+5. Save — GitHub will give you a URL like
+   `https://<your-username>.github.io/noahs-and-ladders/` within a minute
+   or two.
+
+## Customizing the board
+
+Open `script.js` and edit the `LADDERS` and `NOAHS` arrays at the top —
+each entry is `[startSquare, endSquare]`. The game validates nothing at
+runtime, so if you tweak these, just make sure no square number is reused
+across the two lists.

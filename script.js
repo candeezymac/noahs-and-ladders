@@ -1,7 +1,16 @@
 // ---- Board configuration -------------------------------------------------
 const BOARD_SIZE = 32;
 const LADDER_COUNT = 3;
-const NOAH_COUNT = 3;
+
+// Noahs outnumber ladders on purpose — getting gobbled is the fun part!
+// Usually 4 Noahs on the board, occasionally a rarer 5th.
+const NOAH_COUNT_USUAL = 4;
+const NOAH_COUNT_RARE = 5;
+const NOAH_COUNT_RARE_CHANCE = 0.3;
+
+function pickNoahCount() {
+  return Math.random() < NOAH_COUNT_RARE_CHANCE ? NOAH_COUNT_RARE : NOAH_COUNT_USUAL;
+}
 
 // [start, end] pairs — regenerated fresh on every load and every restart by
 // applyBoardLayout(). Ladders send you up (start < end), Noahs drop you back
@@ -20,28 +29,49 @@ function randInt(min, max) {
 // and BOARD_SIZE are reserved (start and win squares).
 function generateBoardLayout() {
   const used = new Set([1, BOARD_SIZE]);
-  const pick = (min, max) => {
-    let value;
-    let attempts = 0;
-    do {
-      value = randInt(min, max);
-      attempts++;
-    } while (used.has(value) && attempts < 200);
+  // Picks a random unused square in the preferred [min, max] window; if
+  // that's exhausted, falls back to the wider-but-still-direction-safe
+  // [fallbackMin, fallbackMax] range. Listing actual candidates (rather
+  // than retrying random guesses) guarantees no two ladders/Noahs ever
+  // land on the same square, and the fallback bounds guarantee a ladder
+  // never ends below its start (or a Noah above its start) even under
+  // fallback. Returns null in the astronomically rare case neither range
+  // has anything left — callers just skip that ladder/Noah.
+  const pick = (min, max, fallbackMin, fallbackMax) => {
+    let candidates = [];
+    for (let v = min; v <= max; v++) {
+      if (!used.has(v)) candidates.push(v);
+    }
+    if (candidates.length === 0) {
+      for (let v = fallbackMin; v <= fallbackMax; v++) {
+        if (!used.has(v)) candidates.push(v);
+      }
+    }
+    if (candidates.length === 0) return null;
+    const value = candidates[randInt(0, candidates.length - 1)];
     used.add(value);
     return value;
   };
 
   const ladders = [];
   for (let i = 0; i < LADDER_COUNT; i++) {
-    const start = pick(2, BOARD_SIZE - 8);
-    const end = pick(Math.min(start + 4, BOARD_SIZE - 1), Math.min(start + 14, BOARD_SIZE - 1));
+    const start = pick(2, BOARD_SIZE - 8, 2, BOARD_SIZE - 2);
+    if (start === null) continue;
+    const end = pick(
+      Math.min(start + 4, BOARD_SIZE - 1), Math.min(start + 14, BOARD_SIZE - 1),
+      start + 1, BOARD_SIZE - 1
+    );
+    if (end === null) continue;
     ladders.push([start, end]);
   }
 
   const noahs = [];
-  for (let i = 0; i < NOAH_COUNT; i++) {
-    const start = pick(8, BOARD_SIZE - 1);
-    const end = pick(Math.max(2, start - 14), Math.max(2, start - 4));
+  const noahCount = pickNoahCount();
+  for (let i = 0; i < noahCount; i++) {
+    const start = pick(8, BOARD_SIZE - 1, 3, BOARD_SIZE - 1);
+    if (start === null) continue;
+    const end = pick(Math.max(2, start - 14), Math.max(2, start - 4), 2, start - 1);
+    if (end === null) continue;
     noahs.push([start, end]);
   }
 

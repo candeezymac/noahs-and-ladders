@@ -310,7 +310,7 @@ function drawConnectors() {
 
 // square 0 = the little starting spot just off square 1
 function placeToken(square, animate = true) {
-  tokenEl.style.transition = animate ? "left 0.28s ease, top 0.28s ease" : "none";
+  tokenEl.style.transition = animate ? "left 0.336s ease, top 0.336s ease" : "none";
   const pos = square <= 0 ? startPosition() : squarePositions.get(square);
   tokenEl.style.left = `${pos.x}%`;
   tokenEl.style.top = `${pos.y}%`;
@@ -457,7 +457,7 @@ async function movePlayer(steps) {
     placeToken(s);
     tokenEl.classList.add("bounce");
     playTickSound();
-    await sleep(180);
+    await sleep(216);
     tokenEl.classList.remove("bounce");
   }
   position = destination;
@@ -518,7 +518,7 @@ async function showGobble(fromSquare, toSquare) {
 
   playGobbleSound();
   gobbleOverlay.classList.add("show");
-  await sleep(1100);
+  await sleep(2000);
   gobbleOverlay.classList.remove("show");
 }
 

@@ -214,11 +214,11 @@ body {
   justify-content: center;
   font-size: clamp(10px, 1.8vw, 13px);
   transform: translate(-50%, -50%);
-  transition: left 0.28s ease, top 0.28s ease;
+  transition: left 0.336s ease, top 0.336s ease;
 }
 
 .token.bounce {
-  animation: tokenBounce 0.3s ease;
+  animation: tokenBounce 0.36s ease;
 }
 
 @keyframes tokenBounce {

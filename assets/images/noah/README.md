@@ -6,9 +6,9 @@ Add up to 3 photos of Noah with these exact filenames:
 - `noah2.jpg`
 - `noah3.jpg`
 
-They'll be used for the "gobble" animation that pops up whenever the
-player lands on a Noah square. The game cycles through whichever ones
-you provide.
+They'll be used both as small badges on the board's Noah squares and
+for the "gobble" animation that pops up whenever the player lands on
+one. The game cycles through whichever ones you provide.
 
 **No photos yet?** No problem — the game already works without them and
 just shows a 😋 emoji instead. Add photos any time and it'll pick them up

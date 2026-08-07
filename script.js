@@ -1,18 +1,60 @@
 // ---- Board configuration -------------------------------------------------
-const BOARD_SIZE = 40;
+const BOARD_SIZE = 32;
+const LADDER_COUNT = 3;
+const NOAH_COUNT = 3;
 
-// [start, end] — landing on `start` sends you climbing up to `end`.
-const LADDERS = [
-  [13, 25], [14, 30], [18, 23], [19, 28],
-];
+// [start, end] pairs — regenerated fresh on every load and every restart by
+// applyBoardLayout(). Ladders send you up (start < end), Noahs drop you back
+// down (start > end).
+let LADDERS = [];
+let NOAHS = [];
+let laddersMap = new Map();
+let noahsMap = new Map();
 
-// [start, end] — landing on `start` gets you gobbled by Noah, dropping you to `end`.
-const NOAHS = [
-  [20, 12], [21, 9], [22, 7], [24, 8],
-];
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
-const laddersMap = new Map(LADDERS);
-const noahsMap = new Map(NOAHS);
+// Picks a random, non-overlapping set of ladder/Noah squares each call, so
+// every game (and every restart) plays out on a different board. Squares 1
+// and BOARD_SIZE are reserved (start and win squares).
+function generateBoardLayout() {
+  const used = new Set([1, BOARD_SIZE]);
+  const pick = (min, max) => {
+    let value;
+    let attempts = 0;
+    do {
+      value = randInt(min, max);
+      attempts++;
+    } while (used.has(value) && attempts < 200);
+    used.add(value);
+    return value;
+  };
+
+  const ladders = [];
+  for (let i = 0; i < LADDER_COUNT; i++) {
+    const start = pick(2, BOARD_SIZE - 8);
+    const end = pick(Math.min(start + 4, BOARD_SIZE - 1), Math.min(start + 14, BOARD_SIZE - 1));
+    ladders.push([start, end]);
+  }
+
+  const noahs = [];
+  for (let i = 0; i < NOAH_COUNT; i++) {
+    const start = pick(8, BOARD_SIZE - 1);
+    const end = pick(Math.max(2, start - 14), Math.max(2, start - 4));
+    noahs.push([start, end]);
+  }
+
+  return { ladders, noahs };
+}
+
+function applyBoardLayout() {
+  const layout = generateBoardLayout();
+  LADDERS = layout.ladders;
+  NOAHS = layout.noahs;
+  laddersMap = new Map(LADDERS);
+  noahsMap = new Map(NOAHS);
+}
 
 // Photos of Noah go in assets/images/noah/ — see README. If they aren't
 // there, the game falls back to emoji so it still works out of the box.
@@ -62,14 +104,14 @@ const PIP_LAYOUTS = {
 // square, so no pixel measuring or resize recalculation is needed.
 const SVG_NS = "http://www.w3.org/2000/svg";
 const COLS = 8;
-const ROWS = 5;
+const ROWS = 4;
 const X_MIN = 9;
 const X_MAX = 91;
 const Y_BOTTOM = 91;
 const Y_TOP = 9;
 const COL_GAP = (X_MAX - X_MIN) / (COLS - 1);
 const ROW_GAP = (Y_BOTTOM - Y_TOP) / (ROWS - 1);
-const WAVE_AMPLITUDE = 5;
+const WAVE_AMPLITUDE = 6;
 
 function computeSquarePositions() {
   const positions = new Map();
@@ -121,6 +163,8 @@ function startPosition() {
 }
 
 function buildBoard() {
+  boardEl.innerHTML = "";
+  noahBadgeIndex = 0;
   drawConnectors();
 
   for (let square = 1; square <= BOARD_SIZE; square++) {
@@ -412,9 +456,11 @@ function resetGame() {
   position = 0;
   rollCount = 0;
   isMoving = false;
+  noahImageIndex = 0;
   rollCountEl.textContent = "0";
+  applyBoardLayout();
+  buildBoard();
   updatePositionDisplay();
-  placeToken(0);
   renderPips(0);
   setMessage("Roll the dice to start climbing!");
   rollBtn.disabled = false;
@@ -427,5 +473,6 @@ rollBtn.addEventListener("click", handleRoll);
 restartBtn.addEventListener("click", resetGame);
 playAgainBtn.addEventListener("click", resetGame);
 
+applyBoardLayout();
 buildBoard();
 updatePositionDisplay();

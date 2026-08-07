@@ -28,7 +28,6 @@ const NOAH_IMAGES = [
 let position = 0; // 0 = not yet on the board
 let rollCount = 0;
 let isMoving = false;
-const cellEls = new Map(); // square number -> DOM element
 
 // ---- DOM refs ---------------------------------------------------------------
 const boardEl = document.getElementById("board");
@@ -60,102 +59,191 @@ const PIP_LAYOUTS = {
 };
 
 // ---- Board building ----------------------------------------------------------
-function squareToRowCol(square) {
-  // square 1 is bottom-left; board snakes left-to-right, right-to-left, ...
-  const rowFromBottom = Math.floor((square - 1) / 10); // 0..9
-  const indexInRow = (square - 1) % 10;
-  const col = rowFromBottom % 2 === 0 ? indexInRow : 9 - indexInRow;
-  const rowFromTop = 9 - rowFromBottom; // grid row, 0 = top
-  return { row: rowFromTop, col };
+// All coordinates live in a virtual 0-100 x 0-100 space that maps directly
+// onto the board's percentage/viewBox — the board container is a fixed 1:1
+// square, so no pixel measuring or resize recalculation is needed.
+const SVG_NS = "http://www.w3.org/2000/svg";
+const COLS = 10;
+const ROWS = 10;
+const X_MIN = 9;
+const X_MAX = 91;
+const Y_BOTTOM = 91;
+const Y_TOP = 9;
+const COL_GAP = (X_MAX - X_MIN) / (COLS - 1);
+const ROW_GAP = (Y_BOTTOM - Y_TOP) / (ROWS - 1);
+const WAVE_AMPLITUDE = 3.4;
+
+function computeSquarePositions() {
+  const positions = new Map();
+  for (let square = 1; square <= BOARD_SIZE; square++) {
+    const row = Math.floor((square - 1) / COLS); // 0 = bottom row
+    const colInRow = (square - 1) % COLS;
+    const leftToRight = row % 2 === 0;
+    const x = leftToRight
+      ? X_MIN + colInRow * COL_GAP
+      : X_MAX - colInRow * COL_GAP;
+    const baseY = Y_BOTTOM - row * ROW_GAP;
+    const wave = WAVE_AMPLITUDE * Math.sin((colInRow / (COLS - 1)) * Math.PI);
+    const y = row % 2 === 0 ? baseY - wave : baseY + wave;
+    positions.set(square, { x, y });
+  }
+  return positions;
+}
+
+const squarePositions = computeSquarePositions();
+
+function startPosition() {
+  const first = squarePositions.get(1);
+  return { x: Math.max(3, first.x - 6), y: first.y };
 }
 
 function buildBoard() {
-  for (let square = 1; square <= BOARD_SIZE; square++) {
-    const { row, col } = squareToRowCol(square);
-    const cell = document.createElement("div");
-    cell.className = "cell";
-    cell.style.gridRowStart = row + 1;
-    cell.style.gridColumnStart = col + 1;
+  drawConnectors();
 
-    const shade = (row + col) % 2 === 0 ? "shade-a" : "shade-b";
-    cell.classList.add(shade);
-    if (square === 100) cell.classList.add("win-cell");
-    if (laddersMap.has(square)) cell.classList.add("ladder-start");
-    if (noahsMap.has(square)) cell.classList.add("noah-start");
+  for (let square = 1; square <= BOARD_SIZE; square++) {
+    const { x, y } = squarePositions.get(square);
+    const node = document.createElement("div");
+    node.className = "node";
+    node.style.left = `${x}%`;
+    node.style.top = `${y}%`;
+
+    if (square === 100) {
+      node.classList.add("win-cell");
+    } else {
+      node.classList.add(square % 2 === 0 ? "shade-a" : "shade-b");
+    }
+    if (laddersMap.has(square)) node.classList.add("ladder-start");
+    if (noahsMap.has(square)) node.classList.add("noah-start");
     for (const [, end] of LADDERS) {
-      if (end === square) cell.classList.add("ladder-end");
+      if (end === square) node.classList.add("ladder-end");
     }
     for (const [, end] of NOAHS) {
-      if (end === square) cell.classList.add("noah-end");
+      if (end === square) node.classList.add("noah-end");
     }
 
     const num = document.createElement("span");
     num.className = "num";
     num.textContent = square;
-    cell.appendChild(num);
+    node.appendChild(num);
 
-    boardEl.appendChild(cell);
-    cellEls.set(square, cell);
+    boardEl.appendChild(node);
   }
 
   boardEl.appendChild(tokenEl);
-  drawConnectors();
   placeToken(0, false);
 }
 
-function cellCenter(square) {
-  const cell = cellEls.get(square);
-  const boardRect = boardEl.getBoundingClientRect();
-  const rect = cell.getBoundingClientRect();
-  return {
-    x: rect.left - boardRect.left + rect.width / 2,
-    y: rect.top - boardRect.top + rect.height / 2,
+function pointsInOrder() {
+  const pts = [];
+  for (let s = 1; s <= BOARD_SIZE; s++) pts.push(squarePositions.get(s));
+  return pts;
+}
+
+// Smooths a polyline into a curve by drawing quadratic segments through
+// the midpoints between consecutive points — gives the path a winding feel.
+function smoothPathD(points) {
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const midX = (points[i].x + points[i + 1].x) / 2;
+    const midY = (points[i].y + points[i + 1].y) / 2;
+    d += ` Q ${points[i].x} ${points[i].y}, ${midX} ${midY}`;
+  }
+  const last = points[points.length - 1];
+  d += ` L ${last.x} ${last.y}`;
+  return d;
+}
+
+function drawPath(svg) {
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", smoothPathD(pointsInOrder()));
+  path.setAttribute("class", "board-road");
+  svg.appendChild(path);
+}
+
+function drawNoahLine(svg, start, end) {
+  const a = squarePositions.get(start);
+  const b = squarePositions.get(end);
+  const line = document.createElementNS(SVG_NS, "line");
+  line.setAttribute("x1", a.x);
+  line.setAttribute("y1", a.y);
+  line.setAttribute("x2", b.x);
+  line.setAttribute("y2", b.y);
+  line.setAttribute("class", "noah-connector");
+  svg.appendChild(line);
+}
+
+// Draws an actual ladder graphic (two rails + rungs) between two squares.
+function drawLadder(svg, start, end) {
+  const a = squarePositions.get(start);
+  const b = squarePositions.get(end);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const px = -dy / len; // perpendicular unit vector
+  const py = dx / len;
+  const railOffset = 1.6;
+
+  const group = document.createElementNS(SVG_NS, "g");
+  group.setAttribute("class", "ladder-graphic");
+
+  const makeLine = (x1, y1, x2, y2, cls) => {
+    const line = document.createElementNS(SVG_NS, "line");
+    line.setAttribute("x1", x1);
+    line.setAttribute("y1", y1);
+    line.setAttribute("x2", x2);
+    line.setAttribute("y2", y2);
+    line.setAttribute("class", cls);
+    group.appendChild(line);
   };
+
+  // rails (dark outline underneath a lighter wood-colored stroke)
+  for (const sign of [1, -1]) {
+    const x1 = a.x + px * railOffset * sign;
+    const y1 = a.y + py * railOffset * sign;
+    const x2 = b.x + px * railOffset * sign;
+    const y2 = b.y + py * railOffset * sign;
+    makeLine(x1, y1, x2, y2, "ladder-rail-outline");
+    makeLine(x1, y1, x2, y2, "ladder-rail");
+  }
+
+  // evenly spaced rungs between the rails
+  const rungCount = Math.max(3, Math.round(len / 6));
+  for (let i = 1; i <= rungCount; i++) {
+    const t = i / (rungCount + 1);
+    const cx = a.x + dx * t;
+    const cy = a.y + dy * t;
+    makeLine(
+      cx + px * railOffset, cy + py * railOffset,
+      cx - px * railOffset, cy - py * railOffset,
+      "ladder-rung"
+    );
+  }
+
+  svg.appendChild(group);
 }
 
 function drawConnectors() {
   const existing = boardEl.querySelector(".connector-svg");
   if (existing) existing.remove();
 
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const svg = document.createElementNS(SVG_NS, "svg");
   svg.classList.add("connector-svg");
-  const rect = boardEl.getBoundingClientRect();
-  svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
 
-  const draw = (pairs, className) => {
-    for (const [start, end] of pairs) {
-      const a = cellCenter(start);
-      const b = cellCenter(end);
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", a.x);
-      line.setAttribute("y1", a.y);
-      line.setAttribute("x2", b.x);
-      line.setAttribute("y2", b.y);
-      line.classList.add("connector-line", className);
-      svg.appendChild(line);
-    }
-  };
+  drawPath(svg);
+  for (const [start, end] of NOAHS) drawNoahLine(svg, start, end);
+  for (const [start, end] of LADDERS) drawLadder(svg, start, end);
 
-  draw(LADDERS, "ladder");
-  draw(NOAHS, "noah");
-  boardEl.insertBefore(svg, tokenEl);
+  boardEl.appendChild(svg);
 }
 
 // square 0 = the little starting spot just off square 1
 function placeToken(square, animate = true) {
   tokenEl.style.transition = animate ? "left 0.28s ease, top 0.28s ease" : "none";
-  let x, y;
-  if (square <= 0) {
-    const c = cellCenter(1);
-    x = c.x - 22;
-    y = c.y;
-  } else {
-    const c = cellCenter(square);
-    x = c.x;
-    y = c.y;
-  }
-  tokenEl.style.left = `${x - 11}px`;
-  tokenEl.style.top = `${y - 11}px`;
+  const pos = square <= 0 ? startPosition() : squarePositions.get(square);
+  tokenEl.style.left = `${pos.x}%`;
+  tokenEl.style.top = `${pos.y}%`;
 }
 
 // ---- Dice ---------------------------------------------------------------------
@@ -312,7 +400,6 @@ function resetGame() {
 rollBtn.addEventListener("click", handleRoll);
 restartBtn.addEventListener("click", resetGame);
 playAgainBtn.addEventListener("click", resetGame);
-window.addEventListener("resize", drawConnectors);
 
 buildBoard();
 updatePositionDisplay();

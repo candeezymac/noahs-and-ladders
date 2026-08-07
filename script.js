@@ -316,6 +316,78 @@ function placeToken(square, animate = true) {
   tokenEl.style.top = `${pos.y}%`;
 }
 
+// ---- Sound effects --------------------------------------------------------
+// All sound effects are synthesized with the Web Audio API (no audio files
+// to fetch/host). AudioContext is created lazily on first use since browsers
+// block audio until a user gesture — the dice roll button click covers that.
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContextClass();
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+
+// Plays a single tone with a short volume envelope (avoids clicks/pops) and
+// an optional pitch slide from `freq` to `freqEnd`.
+function playTone({ freq, freqEnd, duration = 0.15, type = "sine", volume = 0.2, startTime = 0 }) {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const when = ctx.currentTime + startTime;
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, when);
+  if (freqEnd) {
+    osc.frequency.exponentialRampToValueAtTime(freqEnd, when + duration);
+  }
+
+  gain.gain.setValueAtTime(volume, when);
+  gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(when);
+  osc.stop(when + duration + 0.02);
+}
+
+function playDiceSound() {
+  for (let i = 0; i < 6; i++) {
+    playTone({
+      freq: 280 + Math.random() * 420,
+      duration: 0.05,
+      type: "square",
+      volume: 0.1,
+      startTime: i * 0.06,
+    });
+  }
+}
+
+function playTickSound() {
+  playTone({ freq: 900, duration: 0.045, type: "square", volume: 0.1 });
+}
+
+function playLadderSound() {
+  const notes = [440, 554, 659, 880];
+  notes.forEach((freq, i) => {
+    playTone({ freq, duration: 0.12, type: "triangle", volume: 0.16, startTime: i * 0.09 });
+  });
+}
+
+function playGobbleSound() {
+  playTone({ freq: 600, freqEnd: 120, duration: 0.35, type: "sawtooth", volume: 0.2 });
+  playTone({ freq: 300, freqEnd: 80, duration: 0.3, type: "square", volume: 0.12, startTime: 0.1 });
+}
+
+function playWinSound() {
+  const notes = [523, 659, 784, 1046, 1318];
+  notes.forEach((freq, i) => {
+    playTone({ freq, duration: 0.25, type: "triangle", volume: 0.18, startTime: i * 0.12 });
+  });
+}
+
 // ---- Dice ---------------------------------------------------------------------
 function renderPips(value) {
   pipGridEl.innerHTML = "";
@@ -348,6 +420,7 @@ async function handleRoll() {
   dieEl.classList.remove("rolling");
   void dieEl.offsetWidth; // restart animation
   dieEl.classList.add("rolling");
+  playDiceSound();
 
   // quick flicker through faces before landing on the real roll
   for (let i = 0; i < 5; i++) {
@@ -383,6 +456,7 @@ async function movePlayer(steps) {
   for (let s = position + 1; s <= destination; s++) {
     placeToken(s);
     tokenEl.classList.add("bounce");
+    playTickSound();
     await sleep(180);
     tokenEl.classList.remove("bounce");
   }
@@ -399,6 +473,7 @@ async function movePlayer(steps) {
   if (laddersMap.has(position)) {
     const target = laddersMap.get(position);
     setMessage(`<span class="ladder-text">Ladder!</span> Climbing from ${position} up to ${target} 🪜`);
+    playLadderSound();
     await sleep(500);
     position = target;
     placeToken(position);
@@ -441,6 +516,7 @@ async function showGobble(fromSquare, toSquare) {
   };
   gobbleImg.src = src;
 
+  playGobbleSound();
   gobbleOverlay.classList.add("show");
   await sleep(1100);
   gobbleOverlay.classList.remove("show");
@@ -450,6 +526,7 @@ function showWin() {
   winRolls.textContent = `Finished in ${rollCount} roll${rollCount === 1 ? "" : "s"}!`;
   winOverlay.classList.add("show");
   rollBtn.disabled = true;
+  playWinSound();
 }
 
 function resetGame() {
